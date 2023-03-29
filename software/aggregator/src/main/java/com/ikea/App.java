@@ -1,12 +1,23 @@
 package com.ikea;
 
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 
-public class App implements RequestHandler<java.util.Map<String, String>, Void>
+import java.util.ArrayList;
+import java.util.List;
+
+public class App implements RequestHandler<SNSEvent, List<String>>
 {
-    public Void handleRequest(java.util.Map<String, String> stringStringMap, com.amazonaws.services.lambda.runtime.Context context) {
-        final com.amazonaws.services.lambda.runtime.LambdaLogger logger = context.getLogger();
-        logger.log("Aggregate data");
-        return null;
+    public List<String> handleRequest(SNSEvent event, Context context) {
+        LambdaLogger logger = context.getLogger();
+        logger.log("EVENT TYPE: " + event.getClass().toString());
+        List<String> messagesFound = new ArrayList<>();
+        for (SNSEvent.SNSRecord record : event.getRecords()) {
+            SNSEvent.SNS message = record.getSNS();
+            messagesFound.add(message.getMessage());
+        }
+        return messagesFound;
     }
 }
