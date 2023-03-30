@@ -51,11 +51,6 @@
             <version>${constructs.version}</version>
         </dependency>
         <dependency>
-            <groupId>software.amazon.awsconstructs</groupId>
-            <artifactId>lambdasns</artifactId>
-            <version>2.35.0</version>
-        </dependency>
-        <dependency>
           <groupId>org.junit.jupiter</groupId>
           <artifactId>junit-jupiter</artifactId>
           <version>${junit.version}</version>

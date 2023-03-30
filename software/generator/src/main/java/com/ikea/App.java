@@ -1,56 +1,62 @@
 package com.ikea;
 
-import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
-import com.amazonaws.services.lambda.runtime.RequestHandler;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
-import software.amazon.awssdk.services.sns.model.PublishResponse;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 import java.util.Date;
-import java.util.Map;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 
-public class App implements RequestHandler<Map<String, String>, Void>
+public class App
 {
-    @Override
-    public Void handleRequest(Map<String, String> stringStringMap, Context context) {
-        final LambdaLogger logger = context.getLogger();
-        logger.log("Generate data");
+    public static void main( String[] args ) {
 
+        if (args.length != 2) {
+            System.out.println("\n" +
+                    "Usage: <region> <queue url>\n\n");
+            System.exit(1);
+        }
+
+        // push datapoint to SNS so aggregator can handle it later on
+        final String region = args[0];
+        final String queue = args[1];
+
+        SqsClient sqsClient = SqsClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+                .build();
+
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            public void run() {
+                sendMessage(sqsClient, queue);
+            }
+        }, 0, 2*1000);
+    }
+
+    private static void sendMessage(SqsClient sqsClient, String queue) {
         // prepare new datapoint
         final String json = String.format(
                 "{\"timestamp\": %d, \"point\": %d}",
                 getTimestamp(),
                 generateRandom()
         );
-
-        // push datapoint to SNS so aggregator can handle it later on
-        logger.log("Send to SNS");
-        final String region = System.getenv("REGION");
-        final String snsTopic = System.getenv("SNS_TOPIC");
-        try (SnsClient client = SnsClient.builder()
-                .region(Region.of(region))
-                .credentialsProvider(ProfileCredentialsProvider.create())
-                .build()) {
-            final PublishRequest request = PublishRequest.builder()
-                    .message(json)
-                    .topicArn(snsTopic)
-                    .build();
-            final PublishResponse response = client.publish(request);
-            logger.log("Message sent");
-        }
-
-        return null;
+        SendMessageRequest messageRequest = SendMessageRequest.builder()
+                .queueUrl(queue)
+                .messageBody(json)
+                .build();
+        sqsClient.sendMessage(messageRequest);
+        System.out.println(json);
     }
 
     /**
      * Generate random number from 1-1000
      * @return
      */
-    private int generateRandom() {
+    private static int generateRandom() {
         final Random rand = new Random();
         return rand.nextInt(1000) + 1;
     }
@@ -59,7 +65,7 @@ public class App implements RequestHandler<Map<String, String>, Void>
      * Get current timestamp
      * @return
      */
-    private long getTimestamp() {
+    private static long getTimestamp() {
         final Date date = new Date();
         return date.getTime() / 1000;
     }
