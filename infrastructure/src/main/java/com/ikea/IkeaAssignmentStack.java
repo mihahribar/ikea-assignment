@@ -97,6 +97,7 @@ public class IkeaAssignmentStack extends Stack {
         );
         aggregatorFunction.addEventSource(
                 SqsEventSource.Builder.create(queue)
+                        .batchSize(100)
                         .maxBatchingWindow(Duration.seconds(30))
                         .build()
         );

@@ -40,21 +40,17 @@ public class App implements RequestHandler<SQSEvent, List<String>>
                     interval,
                     points
             );
-            logger.log("aggregated " + data);
 
             // connect to DynamoDB and store aggregated messages
             try (DynamoDbClient dbClient = DynamoDbClient.builder().build()) {
-                logger.log("got client");
                 final HashMap<String, AttributeValue> itemValues = new HashMap<>(2);
                 itemValues.put("time_interval", AttributeValue.builder().s(interval).build());
                 itemValues.put("data", AttributeValue.builder().s(data).build());
-                logger.log("got data");
 
                 final PutItemRequest request = PutItemRequest.builder()
                         .tableName(System.getenv("DB_TABLE"))
                         .item(itemValues)
                         .build();
-                logger.log("got request");
                 final PutItemResponse response = dbClient.putItem(request);
                 logger.log("stored new batch of points " + response.responseMetadata().requestId());
             }
