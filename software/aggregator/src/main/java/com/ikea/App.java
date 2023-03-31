@@ -37,9 +37,9 @@ public class App implements RequestHandler<SQSEvent, List<String>>
         if (messages.size() > 0) {
             // which time interval to add messages to?
             // TODO it's likely that not all are from the same timeframe
-            long intervalTime = getCurrentTimeInterval();
+            final Date intervalDate = getTimeFrame(new Date());
             final SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-            final String interval = formatter.format(new Date(intervalTime));
+            final String interval = formatter.format(intervalDate);
 
             // connect to DynamoDB and store aggregated messages
             try (DynamoDbClient dbClient = DynamoDbClient.builder().build()) {
@@ -64,18 +64,20 @@ public class App implements RequestHandler<SQSEvent, List<String>>
     }
 
     /**
-     * Get current time interval (either start of minute or at 30s).
+     * Get current time frame (either start of minute or at 30s).
+     *
      * @return
      */
-    private long getCurrentTimeInterval() {
+     Date getTimeFrame(Date date) {
         // which timeframe to add data points to?
         // since sampling is separated by 30s we can set seconds to 0 and 30s to see which timeframe we're in
-        Calendar calendar = Calendar.getInstance();
-        long currentTime = calendar.getTimeInMillis();
+        final Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        final Date current = calendar.getTime();
         calendar.set(Calendar.SECOND, 0);
-        long startOfMinuteTime = calendar.getTimeInMillis();
+        final Date startOfMinute = calendar.getTime();
         calendar.set(Calendar.SECOND, 30);
-        long halfMinuteTime = calendar.getTimeInMillis();
-        return currentTime >= halfMinuteTime ? halfMinuteTime : startOfMinuteTime;
+        final Date halfOfMinute = calendar.getTime();
+        return current.compareTo(halfOfMinute) >= 0 ? halfOfMinute : startOfMinute;
     }
 }
