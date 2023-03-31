@@ -16,6 +16,9 @@ It is a [Maven](https://maven.apache.org/) based project, so you can open this p
 * `cdk deploy`      deploy this stack to your default AWS account/region
 * `cdk diff`        compare deployed stack with current state
 * `cdk docs`        open CDK documentation
+* `cdk destroy`     destroy all stacks
+
+To create stack used in the assignment run:
 
 ```
 $ cdk deploy
@@ -28,6 +31,12 @@ The following infrastructure is created on AWS:
 - CloudWatch for logs with log group called `/aws/lambda/ikea-lambda-aggregator`
 
 All this is defined in the `/infrastructure` folder.
+
+To destroy the created stack run:
+
+```
+$ cdk destroy
+```
 
 ### DynamoDB
 
@@ -67,10 +76,14 @@ export AWS_ACCESS_KEY_ID=...
 
 Aggregator is periodically called with SQS messages. It then aggregates them and appends data points to the correct timeframe in the DynamoDB using conditional updates.
 
-## Cleanup
+## Disclaimer
 
-After you are done make sure to destroy the infrastructure.
-
-```
-$ cdk destroy
-```
+1. While the assignment asks for an aggregator that runs every 30s to aggregate and store data points,
+I noticed this was very hard to achieve on AWS (inability to call cron on a sub minute resolution) 
+and thus opted for what ended up being a more scalable solution in the end since the SQS and linked
+Lambda can scale up almost indefinitely.
+2. Logging part is also offloaded on CloudWatch where all system logs are automatically gathered and
+displayed on an invocation resolution.
+3. Code is very simple and was left as such for a couple of reasons:
+   - goal was to create a very pragmatic and readable project
+   - adding any services or dependency injection is partially handled by AWS and seemed like an overkill 

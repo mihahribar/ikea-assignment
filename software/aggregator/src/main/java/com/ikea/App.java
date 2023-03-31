@@ -12,6 +12,15 @@ import java.util.*;
 
 public class App implements RequestHandler<SQSEvent, List<String>>
 {
+    /**
+     * Lambda entry point called with SQSEven which may contain many SQSMessages.
+     * It returns a list of handled message ids. If an error occurs during processing
+     * the messages are returned to the queue.
+     *
+     * @param event
+     * @param context
+     * @return
+     */
     public List<String> handleRequest(SQSEvent event, Context context) {
         LambdaLogger logger = context.getLogger();
         logger.log("aggregator started");
@@ -32,12 +41,11 @@ public class App implements RequestHandler<SQSEvent, List<String>>
             final SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
             final String interval = formatter.format(new Date(intervalTime));
 
-            // need to use a conditional add to list of points
-            // - if key does not exist list is set
-            // - if key exists data points are added to the list
-
             // connect to DynamoDB and store aggregated messages
             try (DynamoDbClient dbClient = DynamoDbClient.builder().build()) {
+                // need to use a conditional add to list of points
+                // - if key does not exist list is set
+                // - if key exists data points are added to the list
                 final UpdateItemRequest request = UpdateItemRequest.builder()
                         .tableName(System.getenv("DB_TABLE"))
                         .key(Map.of("time_interval", AttributeValue.builder().s(interval).build()))
@@ -55,6 +63,10 @@ public class App implements RequestHandler<SQSEvent, List<String>>
         return messageIds;
     }
 
+    /**
+     * Get current time interval (either start of minute or at 30s).
+     * @return
+     */
     private long getCurrentTimeInterval() {
         // which timeframe to add data points to?
         // since sampling is separated by 30s we can set seconds to 0 and 30s to see which timeframe we're in

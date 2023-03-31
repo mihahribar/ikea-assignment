@@ -15,8 +15,7 @@ public class App
     public static void main( String[] args ) {
 
         if (args.length != 2) {
-            System.out.println("\n" +
-                    "Usage: <region> <queue url>\n\n");
+            System.out.println("\nUsage: <region> <queue url>\n\n");
             System.exit(1);
         }
 
@@ -44,6 +43,8 @@ public class App
                 getTimestamp(),
                 generateRandom()
         );
+
+        // send message to SQS
         SendMessageRequest messageRequest = SendMessageRequest.builder()
                 .queueUrl(queue)
                 .messageBody(json)
