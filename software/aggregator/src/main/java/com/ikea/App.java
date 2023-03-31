@@ -56,7 +56,7 @@ public class App implements RequestHandler<SQSEvent, List<String>>
                         ))
                         .build();
                 final UpdateItemResponse response = dbClient.updateItem(request);
-                logger.log("stored interval " + interval + " with points " + response.responseMetadata().requestId());
+                logger.log("stored interval " + interval + " with " + messageIds.size() +  " points. requestId:" + response.responseMetadata().requestId());
             }
         }
 

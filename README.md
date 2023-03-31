@@ -18,7 +18,7 @@ It is a [Maven](https://maven.apache.org/) based project, so you can open this p
 * `cdk docs`        open CDK documentation
 * `cdk destroy`     destroy all stacks
 
-To create stack used in the assignment run:
+To create stack used in the assignment run the following from the `/infrastructure` folder:
 
 ```
 $ cdk deploy
@@ -30,7 +30,7 @@ The following infrastructure is created on AWS:
 - Lambda function called `ikea-lambda-aggregator`
 - CloudWatch for logs with log group called `/aws/lambda/ikea-lambda-aggregator`
 
-All this is defined in the `/infrastructure` folder.
+All this is defined in the `/infrastructure` folder in file `/infrastructure/src/main/java/com/ikea/IkeaAssignmentStack.java`.
 
 To destroy the created stack run:
 

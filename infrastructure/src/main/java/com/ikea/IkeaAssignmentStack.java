@@ -91,7 +91,7 @@ public class IkeaAssignmentStack extends Stack {
                                 .bundling(builderOptions.build())
                                 .build()))
                         .handler("com.ikea.App")
-                        .memorySize(512)
+                        .memorySize(1024)
                         .timeout(software.amazon.awscdk.Duration.seconds(30))
                         .logRetention(RetentionDays.ONE_WEEK)
                         .functionName(LAMBDA)
