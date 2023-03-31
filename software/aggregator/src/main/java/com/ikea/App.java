@@ -5,15 +5,10 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.*;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class App implements RequestHandler<SQSEvent, List<String>>
 {
@@ -22,42 +17,53 @@ public class App implements RequestHandler<SQSEvent, List<String>>
         logger.log("aggregator started");
 
         List<String> messageIds = new ArrayList<>();
-        List<String> messages = new ArrayList<>();
+        List<AttributeValue> messages = new ArrayList<>();
 
         // aggregate messages and create a list of
         for (SQSEvent.SQSMessage record : event.getRecords()) {
             messageIds.add(record.getMessageId());
-            messages.add(record.getBody());
+            messages.add(AttributeValue.builder().s(record.getBody()).build());
         }
 
         if (messages.size() > 0) {
-            // prepare body
+            // which time interval to add messages to?
+            // TODO it's likely that not all are from the same timeframe
+            long intervalTime = getCurrentTimeInterval();
             final SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-            final String interval = formatter.format(new Date());
-            final String points = String.join(",", messages);
-            final String data = String.format(
-                    "{\"timeInterval\":\"%s\",\"batchOfPoints\":[%s]}",
-                    interval,
-                    points
-            );
+            final String interval = formatter.format(new Date(intervalTime));
+
+            // need to use a conditional add to list of points
+            // - if key does not exist list is set
+            // - if key exists data points are added to the list
 
             // connect to DynamoDB and store aggregated messages
             try (DynamoDbClient dbClient = DynamoDbClient.builder().build()) {
-                final HashMap<String, AttributeValue> itemValues = new HashMap<>(2);
-                itemValues.put("time_interval", AttributeValue.builder().s(interval).build());
-                itemValues.put("data", AttributeValue.builder().s(data).build());
-
-                final PutItemRequest request = PutItemRequest.builder()
+                final UpdateItemRequest request = UpdateItemRequest.builder()
                         .tableName(System.getenv("DB_TABLE"))
-                        .item(itemValues)
+                        .key(Map.of("time_interval", AttributeValue.builder().s(interval).build()))
+                        .updateExpression("SET #data = list_append(if_not_exists(#data, :list), :list)")
+                        .expressionAttributeNames(Map.of("#data", "batchOfPoints"))
+                        .expressionAttributeValues(Map.of(
+                                ":list", AttributeValue.builder().l(messages).build()
+                        ))
                         .build();
-                final PutItemResponse response = dbClient.putItem(request);
-                logger.log("stored new batch of points " + response.responseMetadata().requestId());
+                final UpdateItemResponse response = dbClient.updateItem(request);
+                logger.log("stored interval " + interval + " with points " + response.responseMetadata().requestId());
             }
         }
 
-
-
         return messageIds;
+    }
+
+    private long getCurrentTimeInterval() {
+        // which timeframe to add data points to?
+        // since sampling is separated by 30s we can set seconds to 0 and 30s to see which timeframe we're in
+        Calendar calendar = Calendar.getInstance();
+        long currentTime = calendar.getTimeInMillis();
+        calendar.set(Calendar.SECOND, 0);
+        long startOfMinuteTime = calendar.getTimeInMillis();
+        calendar.set(Calendar.SECOND, 30);
+        long halfMinuteTime = calendar.getTimeInMillis();
+        return currentTime >= halfMinuteTime ? halfMinuteTime : startOfMinuteTime;
     }
 }
